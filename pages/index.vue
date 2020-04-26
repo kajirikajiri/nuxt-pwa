@@ -58,6 +58,7 @@
           </v-btn>
         </v-card-actions>
       </v-card>
+      <auth />
     </v-flex>
   </v-layout>
 </template>
@@ -65,11 +66,13 @@
 <script>
 import Logo from '~/components/Logo.vue'
 import VuetifyLogo from '~/components/VuetifyLogo.vue'
+import Auth from '~/components/Auth.vue'
 
 export default {
   components: {
     Logo,
-    VuetifyLogo
+    VuetifyLogo,
+    Auth
   }
 }
 </script>

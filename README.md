@@ -19,9 +19,10 @@ $ yarn start
 $ yarn generate
 
 # generate firebase
-$ yarn build
-$ yarn generate
-$ firebase deploy
+./deploy.sh
+
+# test firebase locale
+./serve.sh
 ```
 
 For detailed explanation on how things work, check out [Nuxt.js docs](https://nuxtjs.org).
