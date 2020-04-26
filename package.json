@@ -27,6 +27,7 @@
     "@nuxtjs/dotenv": "^1.4.0",
     "@nuxtjs/pwa": "^3.0.0-0",
     "core-js": "2.6.9",
+    "dexie": "^2.0.4",
     "firebase": "^7.14.2",
     "firebaseui": "^4.5.0",
     "firebaseui-ja": "^1.0.0",

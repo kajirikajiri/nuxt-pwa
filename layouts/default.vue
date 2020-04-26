@@ -71,6 +71,7 @@
       <v-container>
         <nuxt v-if="isLogin" />
         <auth v-else />
+        <dexie />
       </v-container>
     </v-content>
     <v-navigation-drawer v-model="rightDrawer" :right="right" temporary fixed>
@@ -94,10 +95,12 @@
 <script>
 import firebase from 'firebase'
 import Auth from '~/components/Auth.vue'
+import Dexie from '~/components/Dexie.vue'
 import { authStore } from '~/store'
 export default {
   components: {
-    Auth
+    Auth,
+    Dexie
   },
   data() {
     return {
