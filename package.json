@@ -26,6 +26,7 @@
     "@nuxtjs/axios": "^5.3.6",
     "@nuxtjs/dotenv": "^1.4.0",
     "@nuxtjs/pwa": "^3.0.0-0",
+    "babel-polyfill": "^6.26.0",
     "core-js": "2.6.9",
     "dexie": "^2.0.4",
     "firebase": "^7.14.2",
@@ -35,6 +36,7 @@
     "vuex-module-decorators": "^0.17.0"
   },
   "devDependencies": {
+    "@babel/preset-env": "^7.9.5",
     "@nuxt/typescript-build": "^0.6.0",
     "@nuxtjs/eslint-config-typescript": "^1.0.0",
     "@nuxtjs/eslint-module": "^1.0.0",

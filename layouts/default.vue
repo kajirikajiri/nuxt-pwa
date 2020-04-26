@@ -93,7 +93,6 @@
 </template>
 
 <script>
-import firebase from 'firebase'
 import Auth from '~/components/Auth.vue'
 import Dexie from '~/components/Dexie.vue'
 import { authStore } from '~/store'
@@ -133,6 +132,7 @@ export default {
   },
   methods: {
     logout() {
+      const firebase = require('firebase')
       firebase
         .auth()
         .signOut()

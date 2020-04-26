@@ -6,7 +6,6 @@
 
 <script>
 import config from '@/firebase.config'
-import uiconfig from '@/firebase.uiconfig'
 import { authStore } from '~/store'
 export default {
   mounted() {
@@ -27,6 +26,18 @@ export default {
         authStore.set(!!user)
       } else {
         // No user is signed in.
+        const uiconfig = {
+          callbacks: {
+            signInSuccessWithAuthResult: () => {
+              return false
+            }
+          },
+          signInOptions: [
+            firebase.auth.GoogleAuthProvider.PROVIDER_ID,
+            firebase.auth.EmailAuthProvider.PROVIDER_ID
+          ],
+          signInFlow: 'popup'
+        }
         ui.start('#firebaseui-auth-container', uiconfig)
         authStore.set(!!user)
       }
