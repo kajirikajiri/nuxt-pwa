@@ -1,4 +1,15 @@
 import colors from 'vuetify/es5/util/colors'
+require('dotenv').config()
+const {
+  GOOGLE_AUTH_API_KEY,
+  GOOGLE_AUTH_AUTH_DOMAIN,
+  GOOGLE_AUTH_DATABASE_URL,
+  GOOGLE_AUTH_PROJECT_ID,
+  GOOGLE_AUTH_STORAGE_BUCKET,
+  GOOGLE_AUTH_MESSAGING_SENDER_ID,
+  GOOGLE_AUTH_APP_ID,
+  GOOGLE_AUTH_MEASUREMENT_ID
+} = process.env
 
 export default {
   mode: 'universal',
@@ -85,5 +96,15 @@ export default {
      */
     // extend(config, ctx) {}
     extend(_) {}
+  },
+  env: {
+    GOOGLE_AUTH_API_KEY,
+    GOOGLE_AUTH_AUTH_DOMAIN,
+    GOOGLE_AUTH_DATABASE_URL,
+    GOOGLE_AUTH_PROJECT_ID,
+    GOOGLE_AUTH_STORAGE_BUCKET,
+    GOOGLE_AUTH_MESSAGING_SENDER_ID,
+    GOOGLE_AUTH_APP_ID,
+    GOOGLE_AUTH_MEASUREMENT_ID
   }
 }

@@ -37,6 +37,7 @@
       </v-btn>
       <v-toolbar-title v-text="title" />
       <v-spacer />
+      <v-btn icon @click="logout()">あ</v-btn>
       <v-btn icon @click.stop="rightDrawer = !rightDrawer">
         <v-icon>mdi-menu</v-icon>
       </v-btn>
@@ -68,6 +69,7 @@
 export default {
   data() {
     return {
+      firebase: {},
       clipped: false,
       drawer: false,
       fixed: false,
@@ -87,6 +89,18 @@ export default {
       right: true,
       rightDrawer: false,
       title: 'Vuetify.js'
+    }
+  },
+  mounted() {
+    const firebase = require('firebase')
+    this.firebase = firebase
+  },
+  methods: {
+    logout() {
+      this.firebase
+        .auth()
+        .signOut()
+        .then()
     }
   }
 }
