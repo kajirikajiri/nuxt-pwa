@@ -30,7 +30,8 @@
     "firebase": "^7.14.2",
     "firebaseui": "^4.5.0",
     "firebaseui-ja": "^1.0.0",
-    "nuxt": "^2.0.0"
+    "nuxt": "^2.0.0",
+    "vuex-module-decorators": "^0.17.0"
   },
   "devDependencies": {
     "@nuxt/typescript-build": "^0.6.0",

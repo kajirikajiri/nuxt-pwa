@@ -37,14 +37,40 @@
       </v-btn>
       <v-toolbar-title v-text="title" />
       <v-spacer />
-      <v-btn icon @click="logout()">あ</v-btn>
+
+      <v-dialog v-model="dialog" max-width="290">
+        <v-card>
+          <v-card-title class="headline">logout ?</v-card-title>
+
+          <v-card-text>
+            bye !
+          </v-card-text>
+
+          <v-card-actions>
+            <v-spacer></v-spacer>
+
+            <v-btn color="green darken-1" text @click="dialog = false">
+              no
+            </v-btn>
+
+            <v-btn color="green darken-1" text @click="logout()">
+              yes
+            </v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
+
+      <v-btn v-if="isLogin" icon @click.stop="dialog = true"
+        ><v-icon>mdi-logout</v-icon></v-btn
+      >
       <v-btn icon @click.stop="rightDrawer = !rightDrawer">
         <v-icon>mdi-menu</v-icon>
       </v-btn>
     </v-app-bar>
     <v-content>
       <v-container>
-        <nuxt />
+        <nuxt v-if="isLogin" />
+        <auth v-else />
       </v-container>
     </v-content>
     <v-navigation-drawer v-model="rightDrawer" :right="right" temporary fixed>
@@ -66,10 +92,16 @@
 </template>
 
 <script>
+import firebase from 'firebase'
+import Auth from '~/components/Auth.vue'
+import { authStore } from '~/store'
 export default {
+  components: {
+    Auth
+  },
   data() {
     return {
-      firebase: {},
+      dialog: false,
       clipped: false,
       drawer: false,
       fixed: false,
@@ -91,16 +123,19 @@ export default {
       title: 'Vuetify.js'
     }
   },
-  mounted() {
-    const firebase = require('firebase')
-    this.firebase = firebase
+  computed: {
+    isLogin() {
+      return authStore.isLogin
+    }
   },
   methods: {
     logout() {
-      this.firebase
+      firebase
         .auth()
         .signOut()
         .then()
+      authStore.set(false)
+      this.dialog = false
     }
   }
 }
