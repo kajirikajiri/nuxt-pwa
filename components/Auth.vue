@@ -1,7 +1,7 @@
 <template>
-  <div>
+  <client-only>
     <div id="firebaseui-auth-container" />
-  </div>
+  </client-only>
 </template>
 
 <script>
@@ -9,7 +9,7 @@ import config from '@/firebase.config'
 import { authStore } from '~/store'
 export default {
   mounted() {
-    const firebase = require('firebase')
+    const firebase = require('firebase/app')
     const firebaseui = require('firebaseui')
 
     if (!firebase.apps.length) {
