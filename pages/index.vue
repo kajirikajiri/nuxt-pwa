@@ -165,6 +165,14 @@ export default {
     await this.setCUrrentDB()
   },
   mounted() {
+    const PullToRefresh = require('pulltorefreshjs')
+    PullToRefresh.init({
+      mainElement: 'body',
+      instructionsRefreshing: 'Refreshing',
+      onRefresh() {
+        document.location.reload()
+      }
+    })
     this.setTableHeight()
     this.setWindowWidth()
   },
@@ -366,5 +374,11 @@ textarea {
 }
 .v-data-table__mobile-row {
   padding: 0 !important;
+}
+// pulltorefresh.js
+.ptr--text,
+.ptr--icon {
+  color: #fff !important;
+  font-family: 'Roboto', sans-serif;
 }
 </style>
