@@ -33,6 +33,7 @@
     "firebaseui": "^4.5.0",
     "firebaseui-ja": "^1.0.0",
     "nuxt": "^2.0.0",
+    "vue-pull-to": "^0.1.8",
     "vuex-module-decorators": "^0.17.0"
   },
   "devDependencies": {

@@ -14,31 +14,45 @@
       :search="search"
       :headers="headers"
       :items="memos"
-      class="elevation-1"
       hide-default-header
       hide-default-footer
       disable-pagination
       :custom-sort="sortNewFirst"
     >
       <template v-slot:item.memo="{ item }">
-        <div class="py-1" @click="clickEdit(item)">
-          <div
-            :style="`width:${windowWidth - 32}px`"
-            style="font-size:1.1em;overflow:hidden;white-space:nowrap;text-overflow:ellipsis"
-          >
-            {{ getFirstLine(item.memo) }}
-          </div>
+        <v-carousel hide-delimiters :show-arrows="false" height="52">
+          <v-carousel-item>
+            <div class="py-1 px-4" @click="clickEdit(item)">
+              <div
+                :style="`width:${windowWidth - 32}px`"
+                style="font-size:1.1em;overflow:hidden;white-space:nowrap;text-overflow:ellipsis"
+              >
+                {{ getFirstLine(item.memo) }}
+              </div>
 
-          <div
-            :style="`width:${windowWidth - 32}px`"
-            style="overflow:hidden;white-space:nowrap;text-overflow:ellipsis"
-          >
-            <span class="mr-3" style="color:#8e8e8e">{{
-              getDisplayDate(item.createdAt)
-            }}</span
-            ><span style="color:#707070">{{ getSecondLine(item.memo) }}</span>
-          </div>
-        </div>
+              <div
+                :style="`width:${windowWidth - 32}px`"
+                style="overflow:hidden;white-space:nowrap;text-overflow:ellipsis"
+              >
+                <span class="mr-3" style="color:#8e8e8e">{{
+                  getDisplayDate(item.createdAt)
+                }}</span
+                ><span style="color:#707070">{{
+                  getSecondLine(item.memo)
+                }}</span>
+              </div>
+            </div>
+          </v-carousel-item>
+          <v-carousel-item>
+            <v-btn
+              style="width:100vw;height:56px;background:#ff5252"
+              :ripple="false"
+              @click="clickDelete(item)"
+            >
+              <v-icon>mdi-delete</v-icon>
+            </v-btn>
+          </v-carousel-item>
+        </v-carousel>
       </template>
     </v-data-table>
     <v-dialog
@@ -125,7 +139,7 @@ export default {
       // 自動保存は1秒後に行う。1秒経過する前に、再入力があったら、タイマーをリセット
       if (this.editMode) {
         if (this.timeoutId) {
-          clearTimeout(this.timeoutId)
+          this.resetTimeout()
         }
         this.timeoutId = setTimeout(() => {
           this.save()
@@ -133,13 +147,15 @@ export default {
         }, 1000)
       }
     },
-    editMode(newEditMode) {
-      if (!newEditMode) {
-        this.editedMemo = { ...this.defaultMemo }
+    async editMode(newEditMode) {
+      if (newEditMode) {
+        this.search = ''
+      } else {
         if (this.timeoutId) {
-          this.save()
-          this.timeoutId = undefined
+          this.resetTimeout()
+          await this.save()
         }
+        this.editedMemo = { ...this.defaultMemo }
       }
     }
   },
@@ -153,6 +169,10 @@ export default {
     this.setWindowWidth()
   },
   methods: {
+    resetTimeout() {
+      clearTimeout(this.timeoutId)
+      this.timeoutId = undefined
+    },
     async clickNew() {
       await this.enableEditMode()
       await this.setFocus()
@@ -178,14 +198,11 @@ export default {
       }, 500)
     },
     async clickCancel() {
-      if (!this.editedMemo.id) {
+      if (!this.editedMemo.id && this.editedMemo.memo === '') {
         this.editMode = false
         return false
       }
-      const isBlank = this.editMode.memo === ''
       if (
-        isBlank ||
-        this.editedMemo.length > 1000 ||
         this.editedMemo.memo.replace(/(\r?\n|\r| |　)/gm, '') === '' // eslint-disable-line no-irregular-whitespace
       ) {
         await this.db.memo
@@ -197,17 +214,16 @@ export default {
       }
       this.editMode = false
     },
-    async clickDelete() {
+    async clickDelete(item) {
       if (confirm('delete ?')) {
-        if (this.editedMemo.id) {
+        if (this.editedMemo.id || item) {
+          const id = this.editedMemo.id || item.id
           await this.db.memo
             .where('id')
-            .equals(this.editedMemo.id)
+            .equals(id)
             .delete()
             .then()
-          this.memos = this.memos.filter(
-            (item) => item.id !== this.editedMemo.id
-          )
+          this.memos = this.memos.filter((memo) => memo.id !== id)
         }
         this.editMode = false
       }
@@ -262,10 +278,13 @@ export default {
       const yesterDay = this.getCurrentDate('ymd-yesterday')
       const beforeYesterDay = this.getCurrentDate('ymd-before-yesterday')
       const hms = createdAt.split(' ')[1]
-      const hm = `${hms.split(':')[0]}:${hms.split(':')[1]}`
+      let h = hms.split(':')[0]
+      let m = hms.split(':')[1]
+      if (h.length === 1) h = '0' + h
+      if (m.length === 1) m = '0' + m
       switch (createdAt.split(' ')[0]) {
         case currentYmd:
-          return hm
+          return `${h}:${m}`
         case yesterDay:
           return '昨日'
         case beforeYesterDay:
@@ -346,6 +365,6 @@ textarea {
   text-align: left !important;
 }
 .v-data-table__mobile-row {
-  padding: 0 16px !important;
+  padding: 0 !important;
 }
 </style>
