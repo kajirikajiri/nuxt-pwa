@@ -13,21 +13,20 @@
       :height="tableHeight"
       :search="search"
       :headers="headers"
-      :items="desserts"
-      :items-per-page="5"
+      :items="memos"
       class="elevation-1"
       hide-default-header
       hide-default-footer
       disable-pagination
-      :custom-sort="customSort"
+      :custom-sort="sortNewFirst"
     >
       <template v-slot:item.memo="{ item }">
-        <div class="py-1" @click="editItem(item)">
+        <div class="py-1" @click="clickEdit(item)">
           <div
             :style="`width:${windowWidth - 32}px`"
             style="font-size:1.1em;overflow:hidden;white-space:nowrap;text-overflow:ellipsis"
           >
-            {{ firstLine(item.memo) }}
+            {{ getFirstLine(item.memo) }}
           </div>
 
           <div
@@ -35,15 +34,15 @@
             style="overflow:hidden;white-space:nowrap;text-overflow:ellipsis"
           >
             <span class="mr-3" style="color:#8e8e8e">{{
-              fixDate(item.createdAt)
+              getDisplayDate(item.createdAt)
             }}</span
-            ><span style="color:#707070">{{ secondLine(item.memo) }}</span>
+            ><span style="color:#707070">{{ getSecondLine(item.memo) }}</span>
           </div>
         </div>
       </template>
     </v-data-table>
     <v-dialog
-      v-model="dialog"
+      v-model="editMode"
       hide-overlay
       persistent
       transition="slide-x-reverse-transition"
@@ -52,9 +51,9 @@
     >
       <v-flex class="pa-4 ma-0" style="background:#1e1e1e;height:100%">
         <textarea
-          ref="textareaFirst"
           v-model="editedMemo.memo"
           autofocus
+          class="textarea"
           style="width:100%;height:100%;font-weight: bolder;"
         />
       </v-flex>
@@ -66,37 +65,33 @@
       absolute
     >
       <v-btn
-        v-if="inputMode && editedIndex !== -1"
+        v-if="editMode"
         value="recent"
         icon
         :ripple="false"
-        @click="cancelEdit"
+        @click="clickCancel"
       >
         <v-icon>mdi-arrow-left</v-icon>
       </v-btn>
       <v-spacer />
       <v-btn
-        v-if="inputMode"
+        v-if="editMode && editedMemo.id"
         value="recent"
         icon
         :ripple="false"
-        @click="deleteCurrentMemo"
+        @click="clickDelete"
       >
         <v-icon>mdi-delete</v-icon>
       </v-btn>
 
       <v-btn
-        v-if="editedMemo.memo.length === 0"
+        v-if="!editMode"
         value="recent"
         icon
         :ripple="false"
-        :disabled="inputMode"
-        @click.stop="clickNewMemo"
+        @click.stop="clickNew"
       >
         <v-icon>mdi-file-plus</v-icon>
-      </v-btn>
-      <v-btn v-else value="recent" icon :ripple="false" @click="save">
-        <v-icon>mdi-content-save</v-icon>
       </v-btn>
     </v-bottom-navigation>
   </div>
@@ -107,13 +102,14 @@ import Dexie from 'dexie'
 export default {
   layout: 'memo',
   data: () => ({
+    currentMemoEditCount: 0,
     windowWidth: 0,
     tableHeight: 0,
-    inputMode: false,
+    timeoutId: undefined,
+    editMode: false,
     search: '',
     db: {},
-    editedIndex: -1,
-    desserts: [],
+    memos: [],
     editedMemo: {
       memo: '',
       createdAt: ''
@@ -122,82 +118,125 @@ export default {
       memo: '',
       createdAt: ''
     },
-    dialog: false,
     headers: [{ text: '', value: 'memo' }]
   }),
-
-  async mounted() {
-    this.db = new Dexie('todoDatabase')
-    this.db.version(1).stores({ todo: '++id,memo,createdAt' })
-
-    await this.db
-      .transaction('rw', this.db.todo, async () => {
-        // Query:
-        this.desserts = await this.db.todo
-          .where('id')
-          .above(0)
-          .toArray()
-      })
-      .catch((e) => {
-        alert(e.stack || e)
-      })
-
-    const windowHeight = document.documentElement.clientHeight
-    const bottomNavigationHeight = document.getElementsByClassName(
-      'bottomNavigation'
-    )[0].offsetHeight
-    const searchFieldHeight = document.getElementsByClassName('seachField')[0]
-      .offsetHeight
-    this.tableHeight = windowHeight - bottomNavigationHeight - searchFieldHeight
-
-    this.windowWidth = document.documentElement.clientWidth
+  watch: {
+    'editedMemo.memo'() {
+      // 自動保存は1秒後に行う。1秒経過する前に、再入力があったら、タイマーをリセット
+      if (this.editMode) {
+        if (this.timeoutId) {
+          clearTimeout(this.timeoutId)
+        }
+        this.timeoutId = setTimeout(() => {
+          this.save()
+          this.timeoutId = undefined
+        }, 1000)
+      }
+    },
+    editMode(newEditMode) {
+      if (!newEditMode) {
+        this.editedMemo = { ...this.defaultMemo }
+        if (this.timeoutId) {
+          this.save()
+          this.timeoutId = undefined
+        }
+      }
+    }
   },
-
+  async beforeMount() {
+    this.db = new Dexie('memoDatabase')
+    this.db.version(1).stores({ memo: '++id,memo,createdAt' })
+    await this.setCUrrentDB()
+  },
+  mounted() {
+    this.setTableHeight()
+    this.setWindowWidth()
+  },
   methods: {
-    customSort(items) {
-      // console.log(items)
+    async clickNew() {
+      await this.enableEditMode()
+      await this.setFocus()
+    },
+    async clickEdit(item) {
+      await this.setEditedMemo(item)
+      await this.enableEditMode()
+      await this.setFocus()
+    },
+    // 非同期にしたかった
+    enableEditMode() {
+      this.editMode = true
+    },
+    // 非同期にしたかった
+    setEditedMemo(item) {
+      this.editedMemo = { ...item }
+    },
+    // autofocusが一回目しか機能しないので自作した
+    setFocus() {
+      setTimeout(() => {
+        const textarea = document.getElementsByClassName('textarea')[0]
+        if (textarea) textarea.focus()
+      }, 500)
+    },
+    async clickCancel() {
+      if (!this.editedMemo.id) {
+        this.editMode = false
+        return false
+      }
+      const isBlank = this.editMode.memo === ''
+      if (
+        isBlank ||
+        this.editedMemo.length > 1000 ||
+        this.editedMemo.memo.replace(/(\r?\n|\r| |　)/gm, '') === '' // eslint-disable-line no-irregular-whitespace
+      ) {
+        await this.db.memo
+          .where('id')
+          .equals(this.editedMemo.id)
+          .delete()
+          .then()
+        this.memos = this.memos.filter((item) => item.id !== this.editedMemo.id)
+      }
+      this.editMode = false
+    },
+    async clickDelete() {
+      if (confirm('delete ?')) {
+        if (this.editedMemo.id) {
+          await this.db.memo
+            .where('id')
+            .equals(this.editedMemo.id)
+            .delete()
+            .then()
+          this.memos = this.memos.filter(
+            (item) => item.id !== this.editedMemo.id
+          )
+        }
+        this.editMode = false
+      }
+    },
+    async save() {
+      this.editedMemo.createdAt = this.getCurrentDate('ymdhms')
+      if (this.editedMemo.id) {
+        await this.db.memo.update(this.editedMemo.id, this.editedMemo).then()
+        this.memos = this.memos.map((memo) => {
+          if (memo.id === this.editedMemo.id) return this.editedMemo
+          return memo
+        })
+      } else {
+        await this.db
+          .transaction('rw', this.db.memo, async () => {
+            const newItemId = await this.db.memo.add(this.editedMemo)
+            this.editedMemo.id = newItemId
+            this.memos.unshift(this.editedMemo)
+          })
+          .catch((e) => {
+            alert(e.stack || e)
+          })
+      }
+    },
+    sortNewFirst(items) {
       items.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
       return items
     },
-    fixDate(createdAt) {
-      const ymd = Date.parse(createdAt.split(' ')[0])
-      const now = new Date()
-      const year = now.getFullYear()
-      const month = now.getMonth() + 1
-      const day = now.getDate()
-      const currentYmd = Date.parse(`${year}/${month}/${day}`)
-      const yesterDay = Date.parse(`${year}/${month}/${day - 1}`)
-      // console.log(ymd)
-      switch (ymd) {
-        case currentYmd:
-          return '今日'
-        case yesterDay:
-          return '昨日'
-        default:
-          return createdAt.split(' ')[0]
-      }
-    },
-    firstLine(memo) {
-      if (!memo) return ''
-      return memo.split('\n')[0]
-    },
-    secondLine(memo) {
-      if (!memo) return ''
-      const firstLine = this.firstLine(memo)
-      return memo.replace(firstLine + '\n', '')
-    },
-    clickNewMemo() {
-      this.inputMode = true
-      this.dialog = true
-    },
-    editItem(item) {
-      this.editedIndex = this.desserts.indexOf(item)
-      this.editedMemo = Object.assign({}, item)
-      this.dialog = true
-      this.inputMode = true
-    },
-
-    async save() {
+    getCurrentDate(target) {
       const now = new Date()
       const year = now.getFullYear()
       const month = now.getMonth() + 1
@@ -205,29 +244,53 @@ export default {
       const hour = now.getHours()
       const minutes = now.getMinutes()
       const seconds = now.getSeconds()
-      const createdAt = `${year}/${month}/${day} ${hour}:${minutes}:${seconds}`
-
-      this.editedMemo.createdAt = createdAt
-      // const maxId = this.desserts.map(a=>a.id).reduce((a,b) => {
-      //   return Math.max(a,b)
-      // })
-      // this.editedMemo.id = maxId + 1
-      this.desserts.unshift(this.editedMemo)
-      if (this.editedIndex === -1) {
-        await this.db
-          .transaction('rw', this.db.todo, async () => {
-            await this.db.todo.add(this.editedMemo)
-          })
-          .catch((e) => {
-            alert(e.stack || e)
-          })
-      } else {
-        this.db.todo.update(this.editedMemo.id, this.editedMemo).then()
+      switch (target) {
+        case 'ymd':
+          return `${year}/${month}/${day}`
+        case 'ymd-yesterday':
+          return `${year}/${month}/${day - 1}`
+        case 'ymd-before-yesterday':
+          return `${year}/${month}/${day - 2}`
+        case 'ymdhms':
+          return `${year}/${month}/${day} ${hour}:${minutes}:${seconds}`
+        case 'hm':
+          return `${hour}:${minutes}`
       }
+    },
+    getDisplayDate(createdAt) {
+      const currentYmd = this.getCurrentDate('ymd')
+      const yesterDay = this.getCurrentDate('ymd-yesterday')
+      const beforeYesterDay = this.getCurrentDate('ymd-before-yesterday')
+      const hms = createdAt.split(' ')[1]
+      const hm = `${hms.split(':')[0]}:${hms.split(':')[1]}`
+      switch (createdAt.split(' ')[0]) {
+        case currentYmd:
+          return hm
+        case yesterDay:
+          return '昨日'
+        case beforeYesterDay:
+          return '一昨日'
+        default:
+          return createdAt.split(' ')[0]
+      }
+    },
+    setTableHeight() {
+      const windowHeight = document.documentElement.clientHeight
+      const bottomNavigationHeight = document.getElementsByClassName(
+        'bottomNavigation'
+      )[0].offsetHeight
+      const searchFieldHeight = document.getElementsByClassName('seachField')[0]
+        .offsetHeight
+      this.tableHeight =
+        windowHeight - bottomNavigationHeight - searchFieldHeight
+    },
+    setWindowWidth() {
+      this.windowWidth = document.documentElement.clientWidth
+    },
+    async setCUrrentDB() {
       await this.db
-        .transaction('rw', this.db.todo, async () => {
-          // Query:
-          this.desserts = await this.db.todo
+        .transaction('rw', this.db.memo, async () => {
+          this.memos = await this.db.memo
             .where('id')
             .above(0)
             .toArray()
@@ -235,47 +298,15 @@ export default {
         .catch((e) => {
           alert(e.stack || e)
         })
-      this.dialog = false
-      this.editedIndex = -1
-      this.inputMode = false
-      this.editedMemo = { ...this.defaultMemo }
     },
-    // 自動保存にすれば。キャンセルはいらない
-    cancelEdit() {
-      if (confirm('Are you sure you want to cancel edit?')) {
-        this.editedIndex = -1
-        this.editedMemo = { ...this.defaultMemo }
-        this.dialog = false
-        this.inputMode = false
-      }
+    getFirstLine(memo) {
+      if (!memo) return ''
+      return memo.split('\n')[0]
     },
-    deleteCurrentMemo() {
-      if (confirm('Are you sure you want to delete this item?')) {
-        if (this.editedIndex === -1) {
-          this.editedMemo = { ...this.defaultMemo }
-          this.dialog = false
-          this.inputMode = false
-        } else {
-          const deleteItem = this.desserts.find((item) => {
-            if (this.editedMemo.id === item.id) {
-              // console.log(item, item.id, this.editedMemo.id)
-              return true
-            }
-          })
-          this.editedIndex = -1
-          this.editedMemo = { ...this.defaultMemo }
-          this.dialog = false
-          this.inputMode = false
-          this.desserts = this.desserts.filter(
-            (item) => item.id !== deleteItem.id
-          )
-          this.db.todo
-            .where('id')
-            .equals(deleteItem.id)
-            .delete()
-            .then(function(_) {})
-        }
-      }
+    getSecondLine(memo) {
+      if (!memo) return ''
+      const firstLine = this.getFirstLine(memo)
+      return memo.replace(firstLine, '')
     }
   }
 }
